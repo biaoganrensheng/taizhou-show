@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <meta name="keywords" content="天地图"/>
+    <title>天地图</title>
+    <script type="text/javascript" src="http://api.tianditu.com/api?v=4.0"></script>
+    <script type="text/javascript" src="plugins/jquery.min.js"></script>
+    <script type="text/javascript" src="data/coast.js"></script>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        body,html{
+            width:100%;
+            height:100%;
+            margin:0;
+            font-family:"Microsoft YaHei";
+            position: relative;
+        }
+        #mapDiv{
+            width:100%;
+            height:100%;
+        }
+        #tuli{
+            position: absolute;
+            z-index: 1000;
+            background-color: rgba(0,0,0,0.6);
+            width: 36px;
+            top: 50%;
+            transform: translateY(-50%);
+            right: 10px;
+            border-radius: 10px;
+            text-align: center;
+            padding: 5px;
+            color: #fff;
+            display: none;
+        }
+        #tuli p {
+            margin-bottom: 18px;
+            font-size: 12px;
+        }
+        #camerMsg{
+            width: 100%;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        /*label的样式*/
+        .tdt-label.tdt-clickable{
+            border-radius: 10px;
+            background-color: rgba(100, 200, 255, 0.7);
+            box-sizing: border-box;
+        }
+        /*linfoWindow的样式*/
+        .tdt-infowindow-content-wrapper{
+            padding: 1px 0 0 0;
+            background-color: rgba(0, 0, 102,0.8);
+            overflow: hidden;
+            border-radius: 10px;
+        }
+        .tdt-infowindow-tip{
+            background-color: #006;
+        }
+    </style>
+</head>
+<body onLoad="onLoad()">
+<div id="mapDiv" ></div>
+<div id="tuli">
+    <img src="images/camer.png" alt="">
+    <p>视频</p>
+    <img src="images/blue.png" alt="">
+    <p>正常</p>
+    <img src="images/green.png" alt="">
+    <p>轻度</p>
+    <img src="images/red.png" alt="">
+    <p>严重</p>
+    <img src="images/yellow.png" alt="">
+    <p>提醒</p>
+</div>
+</body>
+<script>
+    var map;
+    var zoom = 9;
+    function onLoad() {
+        //初始化地图对象
+        map = new T.Map("mapDiv");
+        //设置显示地图的中心点和级别
+        map.centerAndZoom(new T.LngLat(121.01003,28.67372), zoom);
+        map.addEventListener('zoomend',function(){
+            if(map.getZoom()<=9){
+                map.setMapType(TMAP_NORMAL_MAP);
+            }
+            if(map.getZoom()>9){
+                map.setMapType(TMAP_HYBRID_MAP);
+            }
+            if(map.getZoom()<=12){
+                hideLabel();
+            }
+            if(map.getZoom()>12){
+                showLabel();
+            }
+
+        });
+        //绘制玉环市范围
+        addCity('台州市','#00f');
+        var mudData = [];
+        if(getUrlParam('type')=='mud'){
+            mudData = exmPoint;
+        }
+        var params = {
+            'type':getUrlParam('type'),
+            'startTime':getUrlParam('startTime'),
+            'endTime':getUrlParam('endTime'),
+            'mudData':mudData
+        };
+        addMarker(params);
+        hideLabel();
+    }
+
+
+    var myPath = 'http://192.168.0.114:8080/beach_tz/analysis/';
+    /**
+     * 地图添加点状覆盖物
+     * @param {name} String
+     */
+    function addMarker(params){
+        if(params.type=='mud'){
+            $('#tuli').show();
+            var mudObj = [];
+            var mudPoi = params.mudData;
+            $.each(mudPoi,function(i,val){
+                var myUrl = '';
+                switch(val.flag){
+                    case 1:
+                        myUrl = 'images/blue.png';
+                        break;
+                    case 2:
+                        myUrl = 'images/green.png';
+                        break;
+                    case 3:
+                        myUrl = 'images/red.png';
+                        break;
+                    case 4:
+                        myUrl = 'images/yellow.png';
+                        break;
+                    case 5:
+                        myUrl = 'images/camer.png';
+                        break;
+                }
+                var icon = new T.Icon({
+                    iconUrl:myUrl,
+                    iconSize:new T.Point(16,16)
+                });
+                label = new T.Label({
+                    text: val.mudPoiName,
+                    position: new T.LngLat(val.pos[0],val.pos[1]),
+                    offset: new T.Point(2, 12)
+                });
+                var markers = new T.Marker(new T.LngLat(val.pos[0],val.pos[1]),{icon:icon});
+                markers.addEventListener('click',function(){
+                    map.closeInfoWindow();
+                    map.centerAndZoom(new T.LngLat(val.pos[0],val.pos[1]), 15);
+                    if(val.flag==5){
+                        var myDate = new Date();
+                        var t = myDate.getFullYear()+'-'+myDate.getMonth()+'-'+myDate.getDate()+'&nbsp;&nbsp;&nbsp;'+myDate.getHours()+':'+myDate.getMinutes()+':'+myDate.getSeconds();
+                        iconUrl = 'images/camer.png';
+                        var str ='<video id="my_video_1" class="video-js vjs-default-skin" controls loop preload="auto" width="260" height="169">'
+                            +'<source src="images/mud.mp4" type="video/mp4">'
+                            +'<source src="images/mud.webm" type="video/webm">'
+                            +'</video>'
+                            +'<table id="camerMsg" cellSpacing=0 cellPadding=0>'
+                            +'<tr><td><strong>摄像头实时监控</strong></td></tr>'
+                            +'<tr><td><strong>地理位置：</strong>'
+                            +val.pos[0]
+                            +'&nbsp;&nbsp;,&nbsp;&nbsp;'
+                            +val.pos[1]
+                            +'</td></tr>'
+                            +'<tr><td><strong>滩涂状况：</strong>III级</td></tr>'
+                            +'<tr><td><strong>滩&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;长：</strong>张三国</td></tr>'
+                            +'<tr><td><strong>联系电话：</strong>13398769876</td></tr>'
+                            +'<tr><td><strong>当前时间：</strong>'
+                            +t
+                            +'</td></tr></table>';
+                        var content = $('<div></div>');
+                        content.css({'width':'260px'});
+                        content.html(str);
+                        var infoWindow = new T.InfoWindow(content.get(0));
+                        map.openInfoWindow(infoWindow,new T.LngLat(val.pos[0],val.pos[1]));
+                    }
+                })
+                map.addOverLay(label);
+                mudObj.push(markers);
+            })
+            var markers = new T.MarkerClusterer(map,{markers:mudObj});
+        }
+        else{
+            $.ajax({
+                url:myPath+'commProblem',
+                type:'post',
+                data:{
+                    'type':params.type,
+                    'startTime':params.startTime,
+                    'endTime':params.endTime,
+                },
+                dataType:'json',
+                success:function(data){
+                    //根据类型不同用不同图标
+                    var iconUrl = 'images/'+params.type+'.png';
+                    var arrayObj = [];
+                    $.each(data.point,function(i,val){
+                        var myLng = val[0];
+                        var myLat = val[1];
+                        //由于安卓的坐标数据不带小数点，需做处理
+                        if(val[0]>1000||val[1]>100){
+                            myLng = val[0]/Math.pow(10,val[0].toString().length-3);
+                            myLat = val[1]/Math.pow(10,val[1].toString().length-2);
+                            console.log(myLng+','+myLat);
+                        }
+                        var myMarker = new T.Marker(new T.LngLat(myLng,myLat));
+                        changeIcon(myMarker,iconUrl,30);
+                        arrayObj.push(myMarker);
+                    });
+                    //点以聚合的形式加入地图中
+                    var markers = new T.MarkerClusterer(map,{markers:arrayObj});
+                }
+            })
+        }
+
+    }
+    /**
+     * 通过传入省市名称获取行政区范围
+     * @param {areaName} String 省市名称
+     * @param {style} String 行政区对应颜色
+     */
+    function addCity(areaName,style){
+        var LS =  new T.LocalSearch(map,{
+            onSearchComplete:function(data){
+                var allArea = data.getArea().points;
+                $.each(allArea,function(j,item){
+                    var thisRegion = item.region.split(',');
+                    var newRegion = [];
+                    $.each(thisRegion,function(i,val){
+                        newRegion.push(val.split(' ').map(function(v){return Number(v);}));
+                    })
+                    var allPoints = [];
+                    $.each(newRegion,function(i,val){
+                        allPoints.push(new T.LngLat(val[0], val[1]));
+                    })
+                    var polygon = new T.Polygon(allPoints,{
+                        color: "red",
+                        weight: 2,
+                        opacity: 0.5,
+                        fillColor: style,
+                        lineStyle:"dashed"
+                    });
+                    map.addEventListener('zoomend',function(){
+                        if(map.getZoom()<=9){
+                            polygon.setFillOpacity(0.5);
+                        }
+                        else{
+                            polygon.setFillOpacity(0.001);
+                        }
+                    })
+                    //向地图上添加面
+                    map.addOverLay(polygon);
+                })
+            }
+        });
+        LS.search(areaName,1);
+    }
+    /**
+     * 点状覆盖物设置Icon
+     * @param {marker} Object marker对象
+     * @param {iconUrl} String 图片地址
+     * @param {size} Number 图片大小
+     */
+    function changeIcon(marker,iconUrl,size){
+        var icon = new T.Icon({
+            iconUrl:iconUrl,
+            iconSize:new T.Point(size,size),
+            iconAnchor:new T.Point(size/2,size/2),
+        })
+        marker.setIcon(icon);
+    }
+    /**
+     * 解析URL
+     * @param {name} String 参数名称
+     */
+    function getUrlParam(name){
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return unescape(r[2]);
+        return null;
+    }
+    /**
+     * 显示Label
+     */
+    function showLabel() {
+        var allOverlays = map.getOverlays();
+        $.each(allOverlays,function(i,val){
+            if(val.getType()==1){
+                val.show();
+            }
+        })
+    }
+    /**
+     * 隐藏Label
+     */
+    function hideLabel() {
+        var allOverlays = map.getOverlays();
+        $.each(allOverlays,function(i,val){
+            if(val.getType()==1){
+                val.hide();
+            }
+        })
+    }
+
+</script>
+</html>

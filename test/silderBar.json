@@ -1,0 +1,28 @@
+{
+	"res": 1,
+	"list": [{
+			"content": "非法占用海滩专项",
+			"url": "mapshow.html?type=illegal&"
+		}, {
+			"content": " 非法修、造、拆船舶监管专项",
+			"url": "mapshow.html?type=repair&"
+		}, {
+			"content": "违禁渔具专项",
+			"url": "mapshow.html?type=violate&"
+		}, {
+			"content": "非法占用、破坏海岸线专项",
+			"url": "mapshow.html?type=destroy&"
+		}, {
+			"content": "三无渔船专项",
+			"url": "mapshow.html?type=three&"
+		},
+
+		{
+			"content": "入海排污口专项",
+			"url": "mapshow.html?type=sewage&"
+		}
+	]
+}
+
+
+
